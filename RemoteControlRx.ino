@@ -1,13 +1,17 @@
 #include <avr/sleep.h>
 #include "MessageHandler.h"
+#include "DCMotorControl.h"
 
 #define PowerPin 2
 
 volatile long CurrentTimer = 0;
+volatile long LastReceivedMessageTimer = 0;
 
 u8 PowerButtonState = 1;
 u8 PowerButtonCounter = 0;
 
+int ThrottlePWMValue = 0;
+int LeftRightPWMValue = 0;
 
 void setup() {
   // put your setup code here, to run once:
@@ -33,10 +37,21 @@ void loop() {
     Serial.println("Timer Overflow protection.");
   }
 
-  if (micros() - CurrentTimer > 10000 )
+  if ( (micros() - CurrentTimer > 10000 ) )
   {
     ReadSticksAndButtons();
-    //TODO: Parse message
+  }
+
+  if ( (micros() - LastReceivedMessageTimer < 25000) )
+  {
+    ReadSticksAndButtons();
+    ControlDualMotors(ThrottlePWMValue, LeftRightPWMValue);
+  }
+  else
+  {
+    FullStop();
+    ThrottlePWMValue = 0;
+    LeftRightPWMValue = 0;
   }
 
   if (!PowerButtonState)
@@ -126,12 +141,37 @@ int ConvertStickToPWMSignal(u16 Center, int StickMeassurement)
 
 void ParseRFMessage(String MessageToParse)
 {
+  // AB56FE21,6,156,#127,0
+  // Header,Size,Counter,Body
   int HeaderIndex = MessageToParse.indexOf(SticksMessageHeader);
-  if (HeaderIndex != -1)
+  int EndOfMessageIndex = MessageToParse.indexOf('~');
+  if ( (HeaderIndex != -1) && (EndOfMessageIndex != -1) )
   {
-    int MessageSizeEndIndex = MessageToParse.indexOf(",",HeaderIndex + 7);
-    String MessageSizeString = MessageToParse.substring(HeaderIndex + 7,MessageSizeEndIndex);
+    int MessageSizeEndIndex = MessageToParse.indexOf(",",HeaderIndex + 8);
+    String MessageSizeString = MessageToParse.substring(HeaderIndex + 8,MessageSizeEndIndex);
     long MessageSize = MessageSizeString.toInt();
-    String MessageBody = MessageToParse.substring()
+    int MessageBodyBegining = MessageToParse.indexOf("#",HeaderIndex + 8);
+    String MessageBody = MessageToParse.substring(MessageBodyBegining+1,EndOfMessageIndex);
+    int MessageBodySeperatorIndex = MessageToParse.indexOf(",",MessageBodyBegining + 1);
+    String MessageBodyThrottleString = MessageToParse.substring(MessageBodyBegining+1,MessageBodySeperatorIndex);
+    String MessageBodyLeftRightString = MessageToParse.substring(MessageBodySeperatorIndex+1,EndOfMessageIndex);
+
+    ThrottlePWMValue = MessageBodyThrottleString.toInt();
+    LeftRightPWMValue = MessageBodyLeftRightString.toInt();
+  }
+}
+
+void serialEvent1() 
+{
+  LastReceivedMessageTimer = micros();
+  TextFromPort = Serial1.readStringUntil(terminator);
+  if (!TextFromPort.equals("\r\n\n"))
+  {
+    //Serial.println("aaa");
+    Serial.println(TextFromPort);
+    //Serial1.println(TextFromPort);
+    ParseRFMessage(TextFromPort);
+    //GeneralMessage.concat(TextFromPort);
+    //SendMEssageRF(GeneralMessageHeader,GeneralMessage);
   }
 }
