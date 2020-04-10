@@ -16,7 +16,7 @@ int LeftRightPWMValue = 0;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
-  //Serial1.begin(57600); //Rx-Tx Unit
+  Serial1.begin(57600); //Rx-Tx Unit
   pinMode(PowerPin,INPUT_PULLUP);
 
   pinMode(LED_BUILTIN,OUTPUT);
@@ -44,7 +44,6 @@ void loop() {
 
   if ( (micros() - LastReceivedMessageTimer < 25000) )
   {
-    ReadSticksAndButtons();
     ControlDualMotors(ThrottlePWMValue, LeftRightPWMValue);
   }
   else

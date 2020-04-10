@@ -14,6 +14,14 @@ int BIN1 = 11; //Direction
 int BIN2 = 12; //Direction
 
 int PWMThrottle = 0;
+int PWMLeftRight = 0;
+
+bool TurnLeftOrRight = false;
+bool MoveForwardBackward = false;
+boolean inPin1 = LOW;
+boolean inPin2 = HIGH;
+
+void FullStop(void);
 
 void ControlSingleMotor(int motor, int speed, int direction)
 {
@@ -55,44 +63,72 @@ void ControlDualMotors(int ThrottleSignal, int LeftRightSignal)
     //direction: 0 clockwise, 1 counter-clockwise
 
     digitalWrite(STBY, HIGH); //disable standby
-    PWMThrottle = ThrottleSignal + 127;
-    if (PWMThrottle < 15)
+    PWMThrottle = abs(ThrottleSignal) * 2;
+    PWMLeftRight = abs(LeftRightSignal) * 2;
+    if (abs(LeftRightSignal) < 5)
     {
-        PWMThrottle = 0;
+        LeftRightSignal = 0;
+        TurnLeftOrRight = false;
     }
-
-    boolean inPin1 = LOW;
-    boolean inPin2 = HIGH;
-
-    if (LeftRightSignal >= 0)
+    else
+    {
+        TurnLeftOrRight = true;
+    }
+    
+    if ( (LeftRightSignal > 0) && (TurnLeftOrRight) )
     {
         inPin1 = HIGH;
         inPin2 = LOW;
     }
-    else if (LeftRightSignal < 0)
+    else if ( (LeftRightSignal < 0) && (TurnLeftOrRight) )
     {
         inPin1 = LOW;
         inPin2 = HIGH;
     }
-    
-
-    if (LeftRightSignal != 0)
+    else if ( (ThrottleSignal > 0) && (!TurnLeftOrRight) )
     {
-        digitalWrite(AIN1, inPin1);
-        digitalWrite(AIN2, inPin2);
-        analogWrite(PWMA, PWMThrottle);
-        digitalWrite(BIN1, !inPin1);
-        digitalWrite(BIN2, !inPin2);
-        analogWrite(PWMB, PWMThrottle);
+        inPin1 = HIGH;
+        inPin2 = LOW;
+        MoveForwardBackward = true;
+    }
+    else if ( (ThrottleSignal < 0) && (!TurnLeftOrRight) )
+    {
+        inPin1 = LOW;
+        inPin2 = HIGH;
+        MoveForwardBackward = true;
     }
     else
     {
+        TurnLeftOrRight = false;
+        MoveForwardBackward = false;
+    }
+    
+
+    if (TurnLeftOrRight)
+    {
         digitalWrite(AIN1, inPin1);
         digitalWrite(AIN2, inPin2);
-        analogWrite(PWMA, PWMThrottle);
+        
+        digitalWrite(BIN1, !inPin1);
+        digitalWrite(BIN2, !inPin2);
+
+        analogWrite(PWMA, PWMLeftRight);
+        analogWrite(PWMB, PWMLeftRight);
+    }
+    else if (MoveForwardBackward)
+    {
+        digitalWrite(AIN1, inPin1);
+        digitalWrite(AIN2, inPin2);
+        
         digitalWrite(BIN1, inPin1);
         digitalWrite(BIN2, inPin2);
+
+        analogWrite(PWMA, PWMThrottle);
         analogWrite(PWMB, PWMThrottle);
+    }
+    else 
+    {
+        FullStop();
     }
 }
 
