@@ -142,6 +142,7 @@ void ParseRFMessage(String MessageToParse)
 {
   // AB56FE21,6,156,#127,0
   // Header,Size,Counter,Body
+  // Size includes '#' and '~' without Counter
   int HeaderIndex = MessageToParse.indexOf(SticksMessageHeader);
   int EndOfMessageIndex = MessageToParse.indexOf('~');
   if ( (HeaderIndex != -1) && (EndOfMessageIndex != -1) )
